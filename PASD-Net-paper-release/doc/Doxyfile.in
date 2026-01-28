@@ -1,0 +1,8 @@
+# Minimal placeholder Doxyfile for PASD-Net paper release.
+# This repository does not ship full API docs configuration.
+PROJECT_NAME           = "PASD-Net"
+OUTPUT_DIRECTORY       = html
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+INPUT                  = @top_srcdir@/include
+QUIET                  = YES

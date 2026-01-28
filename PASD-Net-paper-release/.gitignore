@@ -1,0 +1,29 @@
+__pycache__/
+*.pyc
+*.pyo
+*.so
+*.o
+*.a
+*.lo
+*.la
+*.obj
+*.dll
+*.dylib
+*.exe
+
+# build outputs
+/build/
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.log
+config.status
+config.h
+config.h.in
+libtool
+stamp-h1
+
+# downloads
+pasdnet_data-*.tar.gz
+weights_blob.bin

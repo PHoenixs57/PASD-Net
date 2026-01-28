@@ -1,0 +1,13 @@
+# PASD-Net uninstalled pkg-config file
+
+prefix=
+exec_prefix=
+libdir=${pcfiledir}/.libs
+includedir=${pcfiledir}/@top_srcdir@/include
+
+Name: pasdnet uninstalled
+Description: PASD-Net noise suppression (not installed)
+Version: @PACKAGE_VERSION@
+Conflicts:
+Libs: ${libdir}/libpasdnet.la @lrintf_lib@
+Cflags: -I${includedir}
