@@ -4,8 +4,9 @@ set -e
 hash=`cat model_version`
 model=pasdnet_data-$hash.tar.gz
 
-# 本发布版不内置模型下载源。请将模型发布到你自己的 GitHub Release / LFS / 对象存储，
-# 并通过 PASDNET_MODEL_URL 提供直链下载地址。
+# This release does not bundle a model download source. Publish the model
+# archive to your own GitHub Release / LFS / object storage and provide a
+# direct download URL through the PASDNET_MODEL_URL environment variable.
 if [ -z "${PASDNET_MODEL_URL}" ]; then
    echo "PASDNET_MODEL_URL is not set."
    echo "Please set PASDNET_MODEL_URL to a direct download URL for: ${model}"
@@ -32,7 +33,7 @@ then
       echo "checksums match"
    fi
 else
-   echo "Could not find sha256 sum; skipping verification. Please verify manually that sha256 hash of ${model} matches ${1}."
+   echo "Could not find sha256sum; skipping verification. Please verify manually that the sha256 hash of ${model} matches ${checksum}."
 fi
 
 

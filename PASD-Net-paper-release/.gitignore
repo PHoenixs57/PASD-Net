@@ -27,3 +27,12 @@ stamp-h1
 # downloads
 pasdnet_data-*.tar.gz
 weights_blob.bin
+
+# build artifacts and generated files
+.deps/
+.dirstamp
+*.pc
+doc/Doxyfile
+config.h.in~
+configure~
+*.code-workspace

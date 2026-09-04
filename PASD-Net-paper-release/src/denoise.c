@@ -22,6 +22,21 @@
 #define TRAINING 0
 #endif
 
+/* Pitch-search and silence-gating configuration.
+   Defaults = langur configuration (min period 60 samples -> F0 search up to ~1 kHz,
+   silence threshold 0.04), also used for the anuran transfer model.
+   The avian transfer model was trained and operates with
+   PASDNET_PITCH_MIN_PERIOD=20 (F0 search up to ~2.4 kHz) and
+   PASDNET_SILENCE_E_THRESHOLD=0.01f; build it with
+   ./configure CPPFLAGS="-DPASDNET_PITCH_MIN_PERIOD=20 -DPASDNET_SILENCE_E_THRESHOLD=0.01f"
+   Features must be extracted with the same configuration used to train the model. */
+#ifndef PASDNET_PITCH_MIN_PERIOD
+# define PASDNET_PITCH_MIN_PERIOD PITCH_MIN_PERIOD
+#endif
+#ifndef PASDNET_SILENCE_E_THRESHOLD
+# define PASDNET_SILENCE_E_THRESHOLD 0.04f
+#endif
+
 
 /* ERB bandwidths going in reverse from 20 kHz and then replacing the 700 and 800
    with just 750 because having 32 bands is convenient for the DNN. 
@@ -313,8 +328,8 @@ int rnn_compute_frame_features(DenoiseState *st, kiss_fft_cpx *X, kiss_fft_cpx *
   float gain;
   float *(pre[1]);
   float follow, logMax;
-  const int minperiod = 20;
-  const float silence_E_threshold = 0.01f;
+  const int minperiod = PASDNET_PITCH_MIN_PERIOD;
+  const float silence_E_threshold = PASDNET_SILENCE_E_THRESHOLD;
   rnn_frame_analysis(st, X, Ex, in);
   RNN_MOVE(st->pitch_buf, &st->pitch_buf[FRAME_SIZE], PITCH_BUF_SIZE-FRAME_SIZE);
   RNN_COPY(&st->pitch_buf[PITCH_BUF_SIZE-FRAME_SIZE], in, FRAME_SIZE);

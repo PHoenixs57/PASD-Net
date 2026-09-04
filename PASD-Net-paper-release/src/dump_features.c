@@ -18,7 +18,7 @@
 
 /*
    What this file does (high level):
-   - Read paired 16-bit PCM streams: clean speech and noisy speech.
+   - Read paired 16-bit PCM streams: clean reference recording and noisy recording.
    - Randomly crop a segment and apply data augmentation (filtering, loudness scaling,
      reverberation, clipping, quantization, etc.).
    - Produce a noisy waveform xn and its clean target x.
@@ -208,8 +208,8 @@ static void rand_resp(float *a, float *b) {
 /*
   Global buffers:
   - speech16 / noisy16: raw 16-bit PCM read from files
-  - x: processed clean speech
-  - xn: processed noisy speech
+  - x: processed clean reference recording
+  - xn: processed noisy recording
  */
 short speech16[SEQUENCE_LENGTH*FRAME_SIZE];
 short noisy16[SEQUENCE_LENGTH*FRAME_SIZE];
@@ -223,9 +223,9 @@ float xn[SEQUENCE_LENGTH*FRAME_SIZE];
 #define LOGIT_SCALE 0.5f
 
 /*
-  Given per-frame energy E, estimate speech energy Esig and noise energy Enoise.
+  Given per-frame energy E, estimate signal energy Esig and noise energy Enoise.
   Then run Viterbi on a 2-state HMM (P00~P11) to produce a smoothed VAD sequence.
-  Output vad[frame] is 0/1 indicating whether the frame is considered speech.
+  Output vad[frame] is 0/1 indicating whether the frame is considered target vocalization.
  */
 static void viterbi_vad(const float *E, int *vad) {
   int i;
@@ -285,7 +285,7 @@ static void viterbi_vad(const float *E, int *vad) {
 }
 
 /*
-  Use the VAD result to fade clean speech x to zero during non-speech regions.
+  Use the VAD result to fade the clean reference x to zero during non-speech regions.
   This makes silence in the target truly silent and avoids leaking background into
   the training target.
  */
@@ -332,7 +332,7 @@ static float weighted_rms(float *x) {
    Program entry point.
 
    Usage:
-     dump_features [-rir_list list] speech.pcm noisy.pcm output.bin count
+     dump_features [-rir_list list] clean.pcm noisy.pcm output.bin count
 
    Generate 'count' sequences (each ~10 seconds) and write per-frame
    (features, g, vad_target) to output.bin.
@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
   /* Initialize RNG seed from PID so each run differs slightly. */
   seed = getpid();
   srand(seed);
-  /* st: analysis state for clean speech; noisy: analysis state for noisy speech/features. */
+  /* st: analysis state for clean reference; noisy: analysis state for the noisy recording/features. */
   st = pasdnet_create(NULL);
   noisy = pasdnet_create(NULL);
   argv0 = argv[0];
@@ -370,13 +370,13 @@ int main(int argc, char **argv) {
   }
   /*
      Argument check: besides optional -rir_list, 4 positional args are required.
-     Inputs are paired clean speech and the corresponding original noisy speech.
+     Inputs are paired clean reference recording and the corresponding original noisy recording.
    */
   if (argc!=5) {
-    fprintf(stderr, "usage: %s [-rir_list list] <speech> <noisy> <output> <count>\n", argv0);
+    fprintf(stderr, "usage: %s [-rir_list list] <clean> <noisy> <output> <count>\n", argv0);
     return 1;
   }
-  /* Open input clean speech, input noisy speech, and output file. */
+  /* Open input clean reference recording, input noisy recording, and output file. */
   f1 = fopen(argv[1], "rb");
   f2 = fopen(argv[2], "rb");
   fout = fopen(argv[3], "wb");
@@ -448,7 +448,7 @@ int main(int argc, char **argv) {
     }
 
     /*
-       Compute per-frame energy E[frame] from the 16-bit clean speech,
+       Compute per-frame energy E[frame] from the 16-bit clean reference,
        and convert short -> float into x / xn.
      */
     for (frame=0;frame<SEQUENCE_LENGTH;frame++) {
@@ -472,7 +472,7 @@ int main(int argc, char **argv) {
     RNN_CLEAR(mem, 2);
     rnn_biquad(xn, mem, xn, b_sig, a_sig, SEQUENCE_LENGTH*FRAME_SIZE);
 
-    /* Compute weighted RMS for loudness normalization (based on clean speech). */
+    /* Compute weighted RMS for loudness normalization (based on the clean reference). */
     speech_rms = weighted_rms(x);
 
     /*
@@ -508,15 +508,15 @@ int main(int argc, char **argv) {
     }
     /*
        For each frame:
-       - Compute clean-band energies Ey from clean speech x.
-       - Extract features from noisy speech xn and compute Ex / Ep / Exp.
+       - Compute clean-band energies Ey from the clean reference x.
+       - Extract features from the noisy recording xn and compute Ex / Ep / Exp.
        - Compute target gain g and vad_target, then write to output.
      */
     for (frame=0;frame<SEQUENCE_LENGTH;frame++) {
       float vad_target;
       /*
-         Analyze band energies on clean speech;
-         extract features and band energies/correlations on noisy speech.
+         Analyze band energies on the clean reference;
+         extract features and band energies/correlations on the noisy recording.
        */
       rnn_frame_analysis(st, Y, Ey, &x[frame*FRAME_SIZE]);
       silence = rnn_compute_frame_features(noisy, X, P, Ex, Ep, Exp, features, &xn[frame*FRAME_SIZE]);
