@@ -36,3 +36,9 @@ doc/Doxyfile
 config.h.in~
 configure~
 *.code-workspace
+
+# compiled binaries
+.libs/
+examples/pasdnet_demo
+/dump_features
+/dump_weights_blob

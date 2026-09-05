@@ -1,1 +1,1 @@
-/usr/share/aclocal/lt~obsolete.m4
+/home/penghao/anaconda3/share/aclocal/lt~obsolete.m4

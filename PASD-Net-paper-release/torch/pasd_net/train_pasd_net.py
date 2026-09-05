@@ -96,7 +96,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=adam_betas, eps=a
 
 # 全局 step 计数，用于 warmup
 global_step = 0
-warmup_steps = 5000  # 可以根据数据量再调，大一点更稳
+warmup_steps = 100  # 数据量小、总步数少,调小让 lr 能爬到设定值(原值 5000 超过整个训练的总步数)
 
 def lr_lambda(step):
     # 先 warmup，再按原来的 1 / (1 + decay * x) 衰减
