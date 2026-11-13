@@ -14,7 +14,8 @@
 #
 # Every value below is either stored in the checkpoints, stated in the
 # training log, or a value hard-coded in torch/rnnoise/train_rnnoise.py at
-# the time of the run (that script is unchanged in this repository).
+# the time of the run. The training scripts and C sources belong to the
+# PASD-Net source tree, not to this configuration folder.
 # =============================================================================
 
 experiment:
@@ -156,6 +157,9 @@ training:
 
 # -----------------------------------------------------------------------------
 # Code settings required to reproduce the bird run
+#
+# Paths below refer to the PASD-Net source tree used for the run. In the
+# public paper release, the C sources are under PASD-Net-paper-release/src/.
 # -----------------------------------------------------------------------------
 required_code_settings:
   - file: src/denoise.c
