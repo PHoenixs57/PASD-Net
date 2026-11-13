@@ -1,0 +1,186 @@
+# =============================================================================
+# PASD-Net - avian (bird) transfer-learning experiment
+#
+# This file belongs to the self-contained avian-config/ directory. Keep that
+# directory at the root of the PASD-Net source tree: all paths below are
+# relative to the repository root.
+#
+# Configuration recovered from the bird run artifacts (the checkpoints and
+# logs listed here are experiment artifacts, not part of this repository's
+# default models/ directory):
+#   - 50 checkpoints: models/birds-model/checkpoints/rnnoise_1.pth ... rnnoise_50.pth
+#   - training log:   torch/rnnoise/nohup.out (50 epochs, 781 batches per epoch)
+#   - feature file:   feature.f32 (78,400,000,000 bytes = 200,000,000 frames)
+#
+# Every value below is either stored in the checkpoints, stated in the
+# training log, or a value hard-coded in torch/rnnoise/train_rnnoise.py at
+# the time of the run (that script is unchanged in this repository).
+# =============================================================================
+
+experiment:
+  name: bird
+  description: >
+    Bird-vocalization transfer-learning run: the PASD-Net speech-denoising
+    feature front-end and network are applied to bird-domain features.
+    Training starts from random initialization (no initial checkpoint).
+  output_dir: models/birds-model
+  checkpoint_pattern: "checkpoints/rnnoise_{epoch}.pth"
+  final_checkpoint: models/birds-model/checkpoints/rnnoise_50.pth
+  suffix: ""
+  seed: null                      # train_rnnoise.py does not set a seed
+
+# -----------------------------------------------------------------------------
+# Training data
+# -----------------------------------------------------------------------------
+data:
+  features_file: feature.f32
+  dtype: float32
+  file_size_bytes: 78400000000
+  total_frames: 200000000
+  feature_dim: 98
+  layout:
+    features: 65                  # per-frame front-end features
+    ideal_gain: 32                # per-band ideal gain target
+    vad: 1                        # voice-activity target
+  sequence_length: 2000           # frames used by the training loader (20 s)
+  num_sequences: 100000           # 200,000,000 / 2000
+  sample_feature_dump: null
+  sample_feature_dump_note: >
+    The original run also produced bird.csv, a 3.4 MB dump_single_features
+    export of one bird recording (frame, pitch_index, silence, 65 features,
+    32 Ex energies, 32 Exp gains). It is not redistributed in this folder.
+    Generate an equivalent file from your own 48 kHz PCM recording with
+    ./dump_single_features --pcm -o bird.csv <bird.pcm>. The binary training
+    file actually consumed by train_rnnoise.py is feature.f32.
+
+dataset_generation:
+  tool: src/dump_features.c
+  sequences: 200000
+  frames_per_sequence: 1000
+  command: |
+    ./dump_features speech.pcm background_noise.pcm foreground_noise.pcm feature.f32 200000
+  speech: "<bird-vocalization corpus, 48 kHz / 16-bit / mono PCM>"
+  noise: "<background-noise corpus, 48 kHz / 16-bit / mono PCM>"
+  foreground_noise: "<foreground-noise corpus, 48 kHz / 16-bit / mono PCM>"
+  rir_list: null                  # no RIR list present in the run; no RIR augmentation
+  note: >
+    200,000 sequences x 1,000 frames = 200,000,000 frames, which is exactly
+    the size of feature.f32. The bird corpus is site-specific and is not
+    redistributed with the repository; substitute the corresponding 48 kHz
+    PCM files when regenerating the feature file.
+
+# -----------------------------------------------------------------------------
+# Feature front-end (C implementation, shared by dump_features and inference)
+# -----------------------------------------------------------------------------
+feature_frontend:
+  sample_rate_hz: 48000
+  bit_depth: 16
+  channels: 1
+  frame_size: 480                 # 10 ms at 48 kHz
+  frame_shift_ms: 10
+  bands: 32
+  num_features: 65                # 2 * 32 + 1
+  pitch_min_period_samples: 20    # bird branch: 20 (speech default: 60)
+  pitch_max_period_samples: 768
+  silence_energy_threshold: 0.01  # bird branch: 0.01f (speech default: 0.04f)
+  note: >
+    minperiod = 20 lets the pitch tracker follow high-frequency bird calls;
+    silence_E_threshold is inference-only (!TRAINING) and prevents faint
+    calls from being zeroed as silence.
+
+# -----------------------------------------------------------------------------
+# Network
+# -----------------------------------------------------------------------------
+model:
+  class: rnnoise.RNNoise
+  input_dim: 65
+  output_dim: 32
+  cond_size: 128
+  gru_size: 384
+  gru_layers: 3
+  use_attention: true
+  attention:
+    attn_scale: 0.5
+    output_scale_min: 0.5
+    output_scale_max: 1.0
+    init: "attn_dense weight and bias initialised to zero"
+    formula: |
+      gate     = sigmoid(0.5 * attn_dense(x))
+      attn_out = x * (0.5 + 0.5 * gate)
+  parameters: 3032609             # printed by the model; matches all checkpoints
+  note: >
+    The bird run used the 0.5-1.0 attention gate above, which is also what
+    src/nnet.c::compute_attention_gate implements. torch/rnnoise/rnnoise.py
+    in this repository currently uses a 0.95-1.0 gate; restore the 0.5-1.0
+    form before reproducing this run (see required_code_settings).
+
+# -----------------------------------------------------------------------------
+# Optimization
+# -----------------------------------------------------------------------------
+training:
+  optimizer: AdamW
+  learning_rate: 5.0e-4
+  betas: [0.8, 0.98]
+  eps: 1.0e-8
+  weight_decay: 0.01              # PyTorch AdamW default; not overridden by the script
+  epochs: 50
+  batch_size: 128
+  steps_per_epoch: 781            # floor(100000 / 128)
+  total_steps: 39050              # 781 * 50
+  sequence_length: 2000
+  shuffle: true
+  drop_last: true
+  num_workers: 4
+  device: "cuda if available, otherwise cpu"
+  lr_schedule:
+    type: linear warm-up followed by inverse-time decay
+    warmup_steps: 5000
+    decay: 5.0e-5
+    formula: |
+      step < 5000:  lr(step) = base_lr * (step + 1) / 5000
+      step >= 5000: lr(step) = base_lr / (1 + 5e-5 * (step - 5000))
+  gradient_clip_norm: 1.0
+  gamma: 0.25                     # perceptual exponent
+  initial_checkpoint: null        # trained from random initialization
+  sparsify: false                 # final checkpoint has 0% zero weights
+  loss:
+    target_gain: "g = clamp(g, min=0); g_target = g * tanh(8 * g)^2"
+    gain: "mean((1 + 5*vad) * mask(g) * (pred_gain^gamma - g_target^gamma)^2), mask(g) = clamp(g + 1, max=1)"
+    vad: "mean(|2*vad - 1| * (-vad*log(0.01 + pred_vad) - (1 - vad)*log(1.01 - pred_vad)))"
+    total: "gain_loss + 0.001 * vad_loss"
+  note: >
+    All optimization values are the defaults of torch/rnnoise/train_rnnoise.py
+    used for the run. 781 batches per epoch fix batch_size = 128 for the
+    100,000-sequence dataset; 50 checkpoint files fix epochs = 50. The
+    checkpoint at epoch 50 has a training loss of 0.010415596585177008.
+
+# -----------------------------------------------------------------------------
+# Code settings required to reproduce the bird run
+# -----------------------------------------------------------------------------
+required_code_settings:
+  - file: src/denoise.c
+    setting: "const int minperiod = 20;"
+    note: "bird pitch range (speech default is PITCH_MIN_PERIOD = 60)"
+  - file: src/denoise.c
+    setting: "const float silence_E_threshold = 0.01f;"
+    note: "inference-only silence gate (speech default is 0.04f)"
+  - file: torch/rnnoise/rnnoise.py
+    setting: "attn_out = x * (0.5 + 0.5 * sigmoid(0.5 * attn_dense(x)))"
+    note: "must match src/nnet.c and the bird checkpoints"
+
+# -----------------------------------------------------------------------------
+# Reproduction
+# -----------------------------------------------------------------------------
+reproduction:
+  command: |
+    # From the repository root, with avian-config/ in place:
+    ./avian-config/train_bird.sh
+    # Equivalent explicit form:
+    # cd torch/rnnoise
+    # python3 train_rnnoise.py ../../feature.f32 ../../models/birds-model \
+    #     --epochs 50 --batch-size 128 --lr 5e-4 \
+    #     --sequence-length 2000 --lr-decay 5e-5 --gamma 0.25 \
+    #     --cond-size 128 --gru-size 384
+  expected_artifacts:
+    - "models/birds-model/checkpoints/rnnoise_{1..50}.pth"
+    - "models/birds-model/train_loss_curves.png"
