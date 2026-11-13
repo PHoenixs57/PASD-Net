@@ -79,12 +79,22 @@ which concatenate to the same 200,000,000 frames.
 
 ## Reproduce
 
-The commands below assume the PASD-Net source tree (including
-`torch/rnnoise/train_rnnoise.py`, `torch/rnnoise/rnnoise.py`, and the C
-front-end under `src/`) is at the repository root and that this folder is
+The commands below assume the PASD-Net source tree used for the run
+(including `torch/rnnoise/train_rnnoise.py`, `torch/rnnoise/rnnoise.py`, and
+the C front-end under `src/`) is at the repository root, with this folder as
 `avian-config/`.
 
+In the public paper release the C sources live under
+`PASD-Net-paper-release/` instead. In that layout, run the build and
+`dump_features` steps from `PASD-Net-paper-release/` and adjust the relative
+paths below accordingly. The RNNoise training scripts referenced by
+`train_bird.sh` are part of the authors' source tree and are required to
+retrain the model.
+
 ### 1. Build the C front-end
+
+From the source-tree root (the repository root in the authors' layout, or
+`PASD-Net-paper-release/` in the public release):
 
 ```bash
 ./autogen.sh
