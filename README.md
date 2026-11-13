@@ -3,10 +3,16 @@
 Official code and paper artifacts for **"PASD-Net: A sensing and denoise
 network for wildlife passive acoustic monitoring"** (Ecological Informatics).
 
+![PASD-Net overview](assets/overview.png)
+
+*Overview of the PASD-Net pipeline: data acquisition and preparation, the
+sensing and denoising modules, and downstream model validation.*
+
 | Directory | Contents |
 |---|---|
 | [`PASD-Net-paper-release/`](PASD-Net-paper-release/) | Source code (C + PyTorch), pre-trained weights, train/test splits, per-segment evaluation records, clip-level labels, evaluation scripts and dataset metadata — see its [README](PASD-Net-paper-release/README.md) |
 | [`data/`](data/) | Paired noisy/denoised example clips for the three studied taxa (white-headed langur, anuran, avian) |
+| [`assets/`](assets/) | Figures used in this README (PNG preview and original TIFF) |
 
 Raw white-headed langur recordings cannot be redistributed because location
 information of this critically endangered species is sensitive; see
