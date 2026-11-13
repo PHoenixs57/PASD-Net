@@ -1,0 +1,34 @@
+# Citation metadata for the PASD-Net software release.
+#
+# Before publishing the archival release, replace the collective author entry
+# below with the full author list from the manuscript, and add the Zenodo DOI
+# under `identifiers` once it has been minted.
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper and the archived release."
+title: "PASD-Net: A sensing and denoise network for wildlife passive acoustic monitoring"
+abstract: >-
+  PASD-Net is a real-time neural-network denoising library for wildlife
+  passive acoustic monitoring. The repository contains the C inference
+  library, PyTorch training and inference code, pre-trained models for
+  white-headed langur, anuran, and avian calls, evaluation artifacts, and the
+  avian transfer-learning configuration.
+authors:
+  - name: "PASD-Net authors"
+    website: "https://github.com/PHoenixs57/PASD-Net"
+type: software
+repository-code: "https://github.com/PHoenixs57/PASD-Net"
+url: "https://github.com/PHoenixs57/PASD-Net"
+version: "1.1.0"
+date-released: "2026-11-13"
+license: "BSD-3-Clause"
+keywords:
+  - passive acoustic monitoring
+  - wildlife monitoring
+  - acoustic denoising
+  - deep learning
+  - bioacoustics
+  - PASD-Net
+identifiers:
+  - type: url
+    value: "https://github.com/PHoenixs57/PASD-Net/tree/v1.1.0"
+    description: "Tagged source release v1.1.0"
